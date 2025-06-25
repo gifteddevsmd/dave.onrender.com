@@ -1,18 +1,14 @@
 {
   "name": "dave-pair-service",
   "version": "1.0.0",
-  "description": "WhatsApp Pairing Service by Dave",
+  "description": "Session pairing service for Dave-Md-V1",
   "main": "api/pair.js",
   "type": "module",
   "scripts": {
     "start": "node api/pair.js"
   },
-  "author": "Dave",
-  "license": "MIT",
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.6.0",
     "express": "^4.19.2",
-    "cors": "^2.8.5",
-    "boom": "^7.3.0"
+    "cors": "^2.8.5"
   }
 }
