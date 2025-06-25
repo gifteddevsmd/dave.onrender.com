@@ -1,16 +1,17 @@
 {
   "name": "dave-pair-service",
   "version": "1.0.0",
-  "description": "Phone number based WhatsApp pairing for DAVE-XMD",
+  "description": "WhatsApp Baileys Pairing Service by Dave",
   "main": "api/pair.js",
   "type": "module",
   "scripts": {
     "start": "node api/pair.js"
   },
+  "author": "Dave",
+  "license": "MIT",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.6.0",
-    "express": "^4.19.2",
-    "pino": "^8.14.1",
-    "qrcode": "^1.5.3"
+    "@hapi/boom": "^10.0.1",
+    "pino": "^8.14.1"
   }
 }
