@@ -1,34 +1,32 @@
-name: 🔁 Sync Sessions to Main Bot
+name: 🔄 Pull Sessions from Main Bot
 
 on:
-  push:
-    paths:
-      - 'sessions/**'
-    branches:
-      - main
+  schedule:
+    - cron: '*/15 * * * *' # Every 15 minutes (adjust as needed)
+  workflow_dispatch:       # Manual trigger option
 
 jobs:
-  push-sessions:
+  pull-sessions:
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout pairing repo
         uses: actions/checkout@v3
 
-      - name: 📤 Push sessions to main bot repo
+      - name: 🔄 Pull sessions from main bot repo
         env:
           GH_TOKEN: ${{ secrets.MAIN_BOT_TOKEN }}
         run: |
-          git config --global user.name "Pairing Bot"
-          git config --global user.email "pairbot@users.noreply.github.com"
+          git config --global user.name "Session Sync Bot"
+          git config --global user.email "syncbot@users.noreply.github.com"
 
-          echo "📦 Cloning target repo..."
-          git clone https://x-access-token:${GH_TOKEN}@github.com/gifteddevsmd/DAVE-XMD.git target-repo
+          echo "🔗 Cloning main bot repo..."
+          git clone https://x-access-token:${GH_TOKEN}@github.com/gifteddevsmd/DAVE-XMD.git source-repo
 
-          echo "🔁 Copying sessions to target repo..."
-          cp -r sessions/* target-repo/sessions/ || echo "No sessions to copy"
+          echo "🔁 Copying sessions back to pairing repo..."
+          mkdir -p sessions
+          cp -r source-repo/sessions/* sessions/ || echo "No sessions to pull"
 
-          cd target-repo
           git add sessions/
-          git commit -m "🔁 Auto-sync sessions" || echo "No changes to commit"
+          git commit -m '🔄 Pulled updated sessions from main bot' || echo "No updates"
           git push
