@@ -1,1 +1,30 @@
+name: Sync Sessions to Main Bot
 
+on:
+  push:
+    paths:
+      - 'sessions/**'
+    branches:
+      - main
+
+jobs:
+  push-sessions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout pairing repo
+        uses: actions/checkout@v3
+
+      - name: Push sessions to main bot repo
+        run: |
+          git config user.name "Pairing Bot"
+          git config user.email "pairbot@users.noreply.github.com"
+          
+          git clone https://x-access-token:${{ secrets.MAIN_BOT_TOKEN }}@github.com/gifteddevsmd/DAVE-XMD.git target-repo
+
+          cp -r sessions/* target-repo/sessions/
+
+          cd target-repo
+          git add sessions/
+          git commit -m "🔁 Auto-sync sessions"
+          git push
