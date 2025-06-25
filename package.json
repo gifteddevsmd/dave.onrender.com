@@ -1,14 +1,17 @@
 {
-  "name": "dave-pair-service",
+  "name": "dave-xmd-pair-service",
   "version": "1.0.0",
-  "description": "Session pairing service for Dave-Md-V1",
+  "description": "Pairing service for DAVE-XMD WhatsApp bot",
   "main": "api/pair.js",
   "type": "module",
   "scripts": {
     "start": "node api/pair.js"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.6.0",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "cors": "^2.8.5"
+    "node-cache": "^5.1.2"
   }
 }
