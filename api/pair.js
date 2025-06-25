@@ -1,39 +1,38 @@
-import express from 'express'
-import { Boom } from '@hapi/boom'
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
-import qrcode from 'qrcode'
-import fs from 'fs'
+import makeWASocket, {
+  useSingleFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion
+} from '@whiskeysockets/baileys';
 
-const app = express()
-const PORT = process.env.PORT || 3000
+import { Boom } from '@hapi/boom';
+import { existsSync, mkdirSync } from 'fs';
+import P from 'pino';
 
-app.get('/', async (req, res) => {
-  const { state, saveCreds } = await useMultiFileAuthState(`./session`)
-  const { version } = await fetchLatestBaileysVersion()
+const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+
+const startSock = async () => {
+  const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
-    version,
+    logger: P({ level: 'silent' }),
+    printQRInTerminal: true,
     auth: state,
-    printQRInTerminal: false,
-    generateHighQualityLinkPreview: true
-  })
+    version
+  });
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, qr } = update
-    if (qr) {
-      const qrImage = await qrcode.toDataURL(qr)
-      res.send(`<img src="${qrImage}" />`)
-    }
-
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update;
     if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut)
-      if (shouldReconnect) sock.ws.close()
+      const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      if (shouldReconnect) {
+        startSock();
+      }
+    } else if (connection === 'open') {
+      console.log('✅ Pairing server live on port 10000');
     }
-  })
+  });
 
-  sock.ev.on('creds.update', saveCreds)
-})
+  sock.ev.on('creds.update', saveState);
+};
 
-app.listen(PORT, () => {
-  console.log(`Pairing server live on port ${PORT}`)
-})
+startSock();
