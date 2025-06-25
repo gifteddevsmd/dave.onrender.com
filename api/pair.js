@@ -1,43 +1,45 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const fs = require('fs');
-const path = require('path');
+// api/pair.js
 
-module.exports = async (req, res) => {
-  const { number, code } = req.query;
+import express from 'express'
+import { Boom } from '@hapi/boom'
+import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys'
+import pino from 'pino'
+import { join } from 'path'
+import { existsSync } from 'fs'
 
-  if (!number || !code) {
-    return res.status(400).json({ error: 'Missing number or code' });
-  }
+const app = express()
+const PORT = process.env.PORT || 3000
 
-  const sessionId = `xmd~${number}`;
-  const sessionDir = path.join(__dirname, '..', 'sessions', sessionId);
+app.use(express.json())
 
-  if (!fs.existsSync(sessionDir)) {
-    fs.mkdirSync(sessionDir, { recursive: true });
-  }
+app.post('/pair', async (req, res) => {
+  const { phoneNumber } = req.body
+  if (!phoneNumber) return res.status(400).json({ error: 'Phone number is required' })
 
-  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+  const sessionFolder = join('sessions', `session-${phoneNumber}`)
+  const { state, saveCreds } = await useMultiFileAuthState(sessionFolder)
+
   const sock = makeWASocket({
+    printQRInTerminal: true,
     auth: state,
-    printQRInTerminal: false,
-  });
+    logger: pino({ level: 'silent' })
+  })
 
-  sock.ev.on('creds.update', saveCreds);
-  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update
     if (connection === 'open') {
-      console.log('✅ Paired:', number);
-    } else if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log('❌ Disconnected. Reconnecting:', shouldReconnect);
-      if (shouldReconnect) {
-        // Reconnect logic (if desired)
-      }
+      await saveCreds()
+      const sessionId = `davexmd~${phoneNumber}`
+      return res.status(200).json({ status: 'paired', sessionId })
+    } else if (
+      connection === 'close' &&
+      (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut)
+    ) {
+      sock.restart()
     }
-  });
+  })
 
-  return res.json({
-    sessionId: sessionId,
-    status: 'Session created and pairing in progress...',
-  });
-};
+  sock.ev.on('creds.update', saveCreds)
+})
+
+app.listen(PORT, () => console.log(`✅ Pairing service running on http://localhost:${PORT}`))
