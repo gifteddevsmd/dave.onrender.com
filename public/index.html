@@ -1,36 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DAVE-XMD Pairing</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 40px; }
-    input, button { padding: 10px; font-size: 16px; margin-top: 10px; }
-    img { width: 150px; border-radius: 12px; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    img {
+      width: 150px;
+      border-radius: 50%;
+      margin-top: 20px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #00a884;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <img src="https://files.catbox.moe/p57bie.jpg" alt="DAVE-XMD Logo" />
-  <h2>Pair with DAVE-XMD Bot</h2>
-  <p>Enter your WhatsApp number below:</p>
-  <input id="number" placeholder="e.g., 2547XXXXXXXX" />
-  <br>
-  <button onclick="pair()">Generate Code</button>
-  <p id="result"></p>
+  <h1>DAVE-XMD Pairing Service</h1>
+  <img src="https://files.catbox.moe/p57bie.jpg" alt="Bot Image"/>
+  <p>Use the link below to start pairing your device.</p>
+  <button onclick="copyLink()">📋 Copy Pairing Link</button>
+
   <script>
-    async function pair() {
-      const number = document.getElementById('number').value.trim()
-      if (!number) return alert('Enter your number!')
-      const res = await fetch('/pair', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number })
-      })
-      const data = await res.json()
-      document.getElementById('result').innerHTML =
-        `🟢 Code: <b>${data.code}</b><br><br>` +
-        `<a href="/simulate/${data.code}" target="_blank">Click here after linking device</a>`
+    function copyLink() {
+      const link = window.location.origin + '/pair'
+      navigator.clipboard.writeText(link)
+      alert('✅ Copied: ' + link)
     }
   </script>
 </body>
