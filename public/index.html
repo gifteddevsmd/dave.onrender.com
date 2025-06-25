@@ -1,107 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dave Pairing Service</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DAVE-XMD Pairing</title>
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      padding: 2rem;
-    }
-    .container {
-      max-width: 400px;
-      margin: auto;
-      background: #1e293b;
-      padding: 2rem;
-      border-radius: 16px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
-    }
-    img {
-      width: 100px;
-      border-radius: 50%;
-      margin-bottom: 1rem;
-    }
-    input, button {
-      padding: 0.8rem;
-      margin: 0.5rem 0;
-      border-radius: 8px;
-      border: none;
-      width: 100%;
-      font-size: 1rem;
-    }
-    input {
-      background: #334155;
-      color: white;
-    }
-    button {
-      background: #10b981;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button.copy-btn {
-      background: #3b82f6;
-    }
-    .output {
-      background: #0f172a;
-      margin-top: 1rem;
-      padding: 1rem;
-      border-radius: 12px;
-    }
+    body { font-family: sans-serif; text-align: center; padding: 40px; }
+    input, button { padding: 10px; font-size: 16px; margin-top: 10px; }
+    img { width: 150px; border-radius: 12px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img src="https://files.catbox.moe/p57bie.jpg" alt="Bot Image" />
-    <h2>Dave Pairing Service</h2>
-    <p>Enter your WhatsApp number below to generate your code.</p>
-
-    <input type="text" id="number" placeholder="e.g. 254104260236" />
-    <button onclick="generateCode()">Generate Code</button>
-
-    <div class="output" id="result" style="display:none;">
-      <p><strong>Pairing Code:</strong> <span id="codeText"></span></p>
-      <button class="copy-btn" onclick="copyText('codeText')">📋 Copy Code</button>
-
-      <p><strong>Session ID:</strong> <span id="sessionText"></span></p>
-      <button class="copy-btn" onclick="copyText('sessionText')">📋 Copy Session</button>
-    </div>
-  </div>
-
+  <img src="https://files.catbox.moe/p57bie.jpg" alt="DAVE-XMD Logo" />
+  <h2>Pair with DAVE-XMD Bot</h2>
+  <p>Enter your WhatsApp number below:</p>
+  <input id="number" placeholder="e.g., 2547XXXXXXXX" />
+  <br>
+  <button onclick="pair()">Generate Code</button>
+  <p id="result"></p>
   <script>
-    async function generateCode() {
-      const number = document.getElementById('number').value;
-      if (!number) return alert('Please enter a valid number');
-      try {
-        const res = await fetch('/pair', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ number })
-        });
-        const data = await res.json();
-        if (data.status) {
-          document.getElementById('codeText').innerText = data.code;
-          document.getElementById('sessionText').innerText = data.sessionId;
-          document.getElementById('result').style.display = 'block';
-        } else {
-          alert(data.error || 'Failed to pair.');
-        }
-      } catch (err) {
-        alert('Failed to connect.');
-      }
-    }
-
-    function copyText(id) {
-      const text = document.getElementById(id).innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        alert('Copied!');
-      });
+    async function pair() {
+      const number = document.getElementById('number').value.trim()
+      if (!number) return alert('Enter your number!')
+      const res = await fetch('/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number })
+      })
+      const data = await res.json()
+      document.getElementById('result').innerHTML =
+        `🟢 Code: <b>${data.code}</b><br><br>` +
+        `<a href="/simulate/${data.code}" target="_blank">Click here after linking device</a>`
     }
   </script>
 </body>
-  </html>
+</html>
