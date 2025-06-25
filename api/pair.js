@@ -70,7 +70,7 @@ async function startBot(code, number) {
     if (connection === 'open') {
       const sessionID = `davexmd~${code.replace(' ', '_').toLowerCase()}`
       await sock.sendMessage(`${number}@s.whatsapp.net`, {
-        text: `✅ *Your session is ready!\n\nSession ID:* \n\n\`\`\`${sessionID}\\`\``
+        text: `✅ *Your session is ready!*\n\n📦 *Session ID:* \n\n\`\`\`${sessionID}\`\`\``
       })
       console.log(`[SUCCESS] Session for ${number}: ${sessionID}`)
       sock.end()
