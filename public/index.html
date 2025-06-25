@@ -3,43 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DAVE-XMD Pairing</title>
+  <title>WhatsApp Pairing - DAVE-XMD</title>
   <style>
     body {
+      font-family: sans-serif;
       background: #111;
       color: #fff;
-      font-family: 'Arial', sans-serif;
       text-align: center;
-      padding: 20px;
+      padding: 50px;
+    }
+    input, button {
+      padding: 10px;
+      margin-top: 10px;
+      width: 250px;
+      font-size: 16px;
+    }
+    #codeBox {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
     }
     img {
       width: 150px;
       border-radius: 50%;
-      margin-top: 20px;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 18px;
-      background: #00a884;
-      border: none;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>DAVE-XMD Pairing Service</h1>
-  <img src="https://files.catbox.moe/p57bie.jpg" alt="Bot Image"/>
-  <p>Use the link below to start pairing your device.</p>
-  <button onclick="copyLink()">📋 Copy Pairing Link</button>
+  <img src="https://files.catbox.moe/p57bie.jpg" alt="DAVE-XMD"/>
+  <h2>🔗 Link Your WhatsApp</h2>
+  <p>Enter your number to receive a code:</p>
+  <input id="number" type="text" placeholder="e.g. 2547XXXXXXX" />
+  <br>
+  <button onclick="pair()">Get Code</button>
+  <div id="codeBox"></div>
 
   <script>
-    function copyLink() {
-      const link = window.location.origin + '/pair'
-      navigator.clipboard.writeText(link)
-      alert('✅ Copied: ' + link)
+    async function pair() {
+      const number = document.getElementById("number").value;
+      const res = await fetch("/pair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ number }),
+      });
+      const data = await res.json();
+      if (data.code) {
+        document.getElementById("codeBox").innerHTML = `
+          ✅ Code: <span style="color:lime">${data.code}</span><br>
+          Open WhatsApp > Link Device > Enter This Code
+        `;
+      } else {
+        document.getElementById("codeBox").innerHTML = `❌ ${data.error}`;
+      }
     }
   </script>
 </body>
