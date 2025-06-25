@@ -1,47 +1,45 @@
 import express from 'express'
-import { Boom } from '@hapi/boom'
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
-import pino from 'pino'
+import crypto from 'crypto'
+import cors from 'cors'
 
 const app = express()
-const PORT = process.env.PORT || 10000
+app.use(cors())
+app.use(express.json())
 
-app.get('/', async (req, res) => {
+const sessions = {} // phone => { code, expires }
+
+function generateSessionId() {
+  const random = crypto.randomBytes(3).toString('hex') // e.g., a1b2c3
+  return `gifteddave~${random}`
+}
+
+app.post('/pair', (req, res) => {
+  const { number } = req.body
+  if (!number || !/^\d+$/.test(number)) {
+    return res.status(400).json({ error: 'Invalid phone number' })
+  }
+
+  const sessionId = generateSessionId()
+
+  sessions[number] = {
+    code: sessionId,
+    expires: Date.now() + 10 * 60 * 1000 // 10 mins
+  }
+
+  const link = `https://wa.me/${number}?text=PAIR%20${encodeURIComponent(sessionId)}`
+  return res.json({
+    message: 'Send this message to WhatsApp to confirm pairing',
+    sessionId,
+    wa_link: link
+  })
+})
+
+app.get('/', (req, res) => {
   res.send('✅ Pairing service is running. Use POST /pair to pair.')
 })
 
-// Dummy pairing route for now (you can extend this with phone+code logic later)
-app.get('/pair', async (req, res) => {
-  const { state, saveCreds } = await useMultiFileAuthState('./session')
-  const { version } = await fetchLatestBaileysVersion()
+// Port used by Render
+const PORT = process.env.PORT || 10000
+app.listen(PORT, () => console.log(`✅ Pairing server live on port ${PORT}`))
 
-  const sock = makeWASocket({
-    version,
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: true,
-    auth: state,
-    browser: ['Dave-Md-V1', 'Safari', '1.0.0']
-  })
-
-  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-    if (connection === 'close') {
-      const reasonCode = lastDisconnect?.error?.output?.statusCode
-      const shouldReconnect = reasonCode !== DisconnectReason.loggedOut
-      console.log('Connection closed. Should reconnect:', shouldReconnect)
-      if (shouldReconnect) {
-        // auto-restart logic
-        res.send('⚠️ Connection closed. Reconnecting...')
-      } else {
-        res.send('❌ Disconnected. Please re-pair.')
-      }
-    } else if (connection === 'open') {
-      res.send('✅ Paired successfully! Session saved.')
-    }
-  })
-
-  sock.ev.on('creds.update', saveCreds)
-})
-
-app.listen(PORT, () => {
-  console.log(`✅ Pairing server live on port ${PORT}`)
-})
+export { sessions } // so bot can import it and validate
