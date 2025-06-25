@@ -1,45 +1,58 @@
-import express from 'express'
-import crypto from 'crypto'
-import cors from 'cors'
+import express from "express"
+import cors from "cors"
+import fs from "fs"
+import { randomBytes } from "crypto"
 
 const app = express()
+const port = process.env.PORT || 10000
 app.use(cors())
 app.use(express.json())
 
-const sessions = {} // phone => { code, expires }
+const sessions = {}
 
-function generateSessionId() {
-  const random = crypto.randomBytes(3).toString('hex') // e.g., a1b2c3
-  return `gifteddave~${random}`
+function generateCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  const part = () => Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+  return `${part()} ${part()}`
 }
 
-app.post('/pair', (req, res) => {
+function generateSessionID() {
+  return `gifteddave~${randomBytes(3).toString("hex").toUpperCase()}`
+}
+
+app.get("/", (req, res) => {
+  res.send("✅ Pairing service is running. Use POST /pair to pair.")
+})
+
+app.post("/pair", (req, res) => {
   const { number } = req.body
-  if (!number || !/^\d+$/.test(number)) {
-    return res.status(400).json({ error: 'Invalid phone number' })
+  if (!number || !/^\d{10,15}$/.test(number)) {
+    return res.status(400).json({ error: "Invalid phone number format." })
   }
 
-  const sessionId = generateSessionId()
+  const code = generateCode()
+  const sessionId = generateSessionID()
 
-  sessions[number] = {
-    code: sessionId,
-    expires: Date.now() + 10 * 60 * 1000 // 10 mins
-  }
+  // Save pairing info (simulated)
+  sessions[number] = { code, sessionId }
 
-  const link = `https://wa.me/${number}?text=PAIR%20${encodeURIComponent(sessionId)}`
-  return res.json({
-    message: 'Send this message to WhatsApp to confirm pairing',
-    sessionId,
-    wa_link: link
+  console.log(`📲 Pairing for ${number}:`)
+  console.log(`➡️ Code: ${code}`)
+  console.log(`✅ Session: ${sessionId}`)
+
+  // Simulate sending session via WhatsApp (later we automate)
+  setTimeout(() => {
+    console.log(`📤 Sent session ID ${sessionId} to WhatsApp number ${number}`)
+  }, 5000)
+
+  res.json({
+    success: true,
+    message: "Pairing started.",
+    code,
+    notice: "Use this code in WhatsApp bot to finish pairing."
   })
 })
 
-app.get('/', (req, res) => {
-  res.send('✅ Pairing service is running. Use POST /pair to pair.')
+app.listen(port, () => {
+  console.log(`✅ Server live at http://localhost:${port}`)
 })
-
-// Port used by Render
-const PORT = process.env.PORT || 10000
-app.listen(PORT, () => console.log(`✅ Pairing server live on port ${PORT}`))
-
-export { sessions } // so bot can import it and validate
