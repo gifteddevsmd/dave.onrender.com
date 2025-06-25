@@ -3,59 +3,120 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WhatsApp Pairing - DAVE-XMD</title>
+  <title>DAVE-XMD Pairing</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #111;
-      color: #fff;
+      background: #0b141a;
+      color: #e4e6eb;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      margin: 0;
+    }
+
+    .card {
+      background: #202c33;
+      padding: 2rem;
+      border-radius: 15px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
       text-align: center;
-      padding: 50px;
+      font-size: 1.8rem;
+      color: #25D366;
+      margin-bottom: 1rem;
     }
-    input, button {
-      padding: 10px;
-      margin-top: 10px;
-      width: 250px;
-      font-size: 16px;
-    }
-    #codeBox {
-      margin-top: 20px;
-      font-size: 20px;
-      font-weight: bold;
-    }
+
     img {
-      width: 150px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
-      margin-bottom: 20px;
+      display: block;
+      margin: 0 auto 1rem;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+    }
+
+    input {
+      background: #2a3942;
+      color: #e4e6eb;
+    }
+
+    button {
+      background-color: #25D366;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #20bd5f;
+    }
+
+    .output {
+      margin-top: 1.5rem;
+      background: #2a3942;
+      padding: 1rem;
+      border-radius: 10px;
+      word-break: break-word;
+    }
+
+    .copy-btn {
+      background-color: #3b4a54;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
 <body>
-  <img src="https://files.catbox.moe/p57bie.jpg" alt="DAVE-XMD"/>
-  <h2>🔗 Link Your WhatsApp</h2>
-  <p>Enter your number to receive a code:</p>
-  <input id="number" type="text" placeholder="e.g. 2547XXXXXXX" />
-  <br>
-  <button onclick="pair()">Get Code</button>
-  <div id="codeBox"></div>
+  <div class="card">
+    <img src="https://files.catbox.moe/p57bie.jpg" alt="DAVE-XMD Bot Logo" />
+    <h1>DAVE-XMD Pairing</h1>
+    <input type="text" id="number" placeholder="Enter WhatsApp number (e.g. 2547XXXXXXXX)" />
+    <button onclick="pair()">Generate Code</button>
+
+    <div id="result" class="output" style="display:none;">
+      <p><strong>Code:</strong> <span id="codeText"></span></p>
+      <button class="copy-btn" onclick="copyCode()">📋 Copy Code</button>
+    </div>
+  </div>
 
   <script>
     async function pair() {
-      const number = document.getElementById("number").value;
-      const res = await fetch("/pair", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ number }),
-      });
-      const data = await res.json();
+      const number = document.getElementById('number').value.trim()
+      if (!number) return alert('Please enter your phone number.')
+
+      const res = await fetch('/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number })
+      })
+
+      const data = await res.json()
+
       if (data.code) {
-        document.getElementById("codeBox").innerHTML = `
-          ✅ Code: <span style="color:lime">${data.code}</span><br>
-          Open WhatsApp > Link Device > Enter This Code
-        `;
+        document.getElementById('codeText').textContent = data.code
+        document.getElementById('result').style.display = 'block'
       } else {
-        document.getElementById("codeBox").innerHTML = `❌ ${data.error}`;
+        alert(data.error || 'Something went wrong.')
       }
+    }
+
+    function copyCode() {
+      const text = document.getElementById('codeText').textContent
+      navigator.clipboard.writeText(text)
+      alert('Code copied to clipboard!')
     }
   </script>
 </body>
