@@ -1,58 +1,59 @@
-import express from "express"
-import cors from "cors"
-import fs from "fs"
-import { randomBytes } from "crypto"
+import express from 'express'
+import cors from 'cors'
+import { addPair } from './session.js'
+import crypto from 'crypto'
 
+// Setup
 const app = express()
-const port = process.env.PORT || 10000
+const PORT = process.env.PORT || 10000
 app.use(cors())
 app.use(express.json())
 
-const sessions = {}
-
+// Random session ID + code generator
 function generateCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-  const part = () => Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
-  return `${part()} ${part()}`
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const digits = '0123456789'
+  const l = letters[Math.floor(Math.random() * letters.length)]
+  const d1 = digits[Math.floor(Math.random() * digits.length)]
+  const d2 = digits[Math.floor(Math.random() * digits.length)]
+  const d3 = digits[Math.floor(Math.random() * digits.length)]
+  return `${l}${d1}${d2} ${d3}`
 }
 
-function generateSessionID() {
-  return `gifteddave~${randomBytes(3).toString("hex").toUpperCase()}`
+function generateSessionId(number) {
+  const hash = crypto.createHash('sha1').update(number + Date.now()).digest('hex')
+  return `gifteddave~${hash.slice(0, 10)}`
 }
 
-app.get("/", (req, res) => {
-  res.send("✅ Pairing service is running. Use POST /pair to pair.")
+// Routes
+app.get('/', (req, res) => {
+  res.send('✅ Pairing service is running. Use POST /pair to pair.')
 })
 
-app.post("/pair", (req, res) => {
+app.post('/pair', (req, res) => {
   const { number } = req.body
-  if (!number || !/^\d{10,15}$/.test(number)) {
-    return res.status(400).json({ error: "Invalid phone number format." })
+
+  if (!number || typeof number !== 'string') {
+    return res.status(400).json({ error: 'Invalid number provided' })
   }
 
   const code = generateCode()
-  const sessionId = generateSessionID()
+  const sessionId = generateSessionId(number)
 
-  // Save pairing info (simulated)
-  sessions[number] = { code, sessionId }
+  // Save to sessions.json
+  addPair(number, code, sessionId)
 
-  console.log(`📲 Pairing for ${number}:`)
-  console.log(`➡️ Code: ${code}`)
-  console.log(`✅ Session: ${sessionId}`)
-
-  // Simulate sending session via WhatsApp (later we automate)
-  setTimeout(() => {
-    console.log(`📤 Sent session ID ${sessionId} to WhatsApp number ${number}`)
-  }, 5000)
-
+  // Send session ID or response (you can replace this logic)
   res.json({
-    success: true,
-    message: "Pairing started.",
+    status: true,
+    number,
     code,
-    notice: "Use this code in WhatsApp bot to finish pairing."
+    sessionId,
+    message: `🔐 Your pairing code is: ${code}\n✅ Link this code on WhatsApp.\nSession will be sent after linking.`
   })
 })
 
-app.listen(port, () => {
-  console.log(`✅ Server live at http://localhost:${port}`)
+// Start
+app.listen(PORT, () => {
+  console.log(`✅ Pairing service is live on port ${PORT}`)
 })
