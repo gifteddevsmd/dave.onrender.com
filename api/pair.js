@@ -1,45 +1,39 @@
-// api/pair.js
-
 import express from 'express'
 import { Boom } from '@hapi/boom'
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys'
-import pino from 'pino'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+import qrcode from 'qrcode'
+import fs from 'fs'
 
 const app = express()
 const PORT = process.env.PORT || 3000
 
-app.use(express.json())
-
-app.post('/pair', async (req, res) => {
-  const { phoneNumber } = req.body
-  if (!phoneNumber) return res.status(400).json({ error: 'Phone number is required' })
-
-  const sessionFolder = join('sessions', `session-${phoneNumber}`)
-  const { state, saveCreds } = await useMultiFileAuthState(sessionFolder)
+app.get('/', async (req, res) => {
+  const { state, saveCreds } = await useMultiFileAuthState(`./session`)
+  const { version } = await fetchLatestBaileysVersion()
 
   const sock = makeWASocket({
-    printQRInTerminal: true,
+    version,
     auth: state,
-    logger: pino({ level: 'silent' })
+    printQRInTerminal: false,
+    generateHighQualityLinkPreview: true
   })
 
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update
-    if (connection === 'open') {
-      await saveCreds()
-      const sessionId = `davexmd~${phoneNumber}`
-      return res.status(200).json({ status: 'paired', sessionId })
-    } else if (
-      connection === 'close' &&
-      (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut)
-    ) {
-      sock.restart()
+    const { connection, lastDisconnect, qr } = update
+    if (qr) {
+      const qrImage = await qrcode.toDataURL(qr)
+      res.send(`<img src="${qrImage}" />`)
+    }
+
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut)
+      if (shouldReconnect) sock.ws.close()
     }
   })
 
   sock.ev.on('creds.update', saveCreds)
 })
 
-app.listen(PORT, () => console.log(`✅ Pairing service running on http://localhost:${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Pairing server live on port ${PORT}`)
+})
