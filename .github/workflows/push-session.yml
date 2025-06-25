@@ -1,4 +1,4 @@
-name: Sync Sessions to Main Bot
+name: 🔁 Sync Sessions to Main Bot
 
 on:
   push:
@@ -12,19 +12,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout pairing repo
+      - name: 📥 Checkout pairing repo
         uses: actions/checkout@v3
 
-      - name: Push sessions to main bot repo
+      - name: 📤 Push sessions to main bot repo
+        env:
+          GH_TOKEN: ${{ secrets.MAIN_BOT_TOKEN }}
         run: |
-          git config user.name "Pairing Bot"
-          git config user.email "pairbot@users.noreply.github.com"
-          
-          git clone https://x-access-token:${{ secrets.MAIN_BOT_TOKEN }}@github.com/gifteddevsmd/DAVE-XMD.git target-repo
+          git config --global user.name "Pairing Bot"
+          git config --global user.email "pairbot@users.noreply.github.com"
 
-          cp -r sessions/* target-repo/sessions/
+          echo "📦 Cloning target repo..."
+          git clone https://x-access-token:${GH_TOKEN}@github.com/gifteddevsmd/DAVE-XMD.git target-repo
+
+          echo "🔁 Copying sessions to target repo..."
+          cp -r sessions/* target-repo/sessions/ || echo "No sessions to copy"
 
           cd target-repo
           git add sessions/
-          git commit -m "🔁 Auto-sync sessions"
+          git commit -m "🔁 Auto-sync sessions" || echo "No changes to commit"
           git push
