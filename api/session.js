@@ -1,28 +1,44 @@
-// api/session.js
+import fs from "fs"
+import path from "path"
 
-import fs from 'fs';
-import path from 'path';
+const sessionFilePath = path.join(process.cwd(), "sessions.json")
 
-export default async function handler(req, res) {
-  const { id } = req.query;
-
-  if (!id || typeof id !== 'string') {
-    return res.status(400).json({ error: 'Missing or invalid session ID.' });
+// Load sessions.json or initialize
+function loadSessions() {
+  if (!fs.existsSync(sessionFilePath)) {
+    fs.writeFileSync(sessionFilePath, JSON.stringify([]))
   }
+  return JSON.parse(fs.readFileSync(sessionFilePath))
+}
 
-  const filePath = path.join(process.cwd(), 'sessions', `${id}.json`);
+// Save sessions to disk
+function saveSessions(sessions) {
+  fs.writeFileSync(sessionFilePath, JSON.stringify(sessions, null, 2))
+}
 
-  try {
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'Session not found.' });
+// Add a new pairing
+export function addPair(number, code, sessionId) {
+  const sessions = loadSessions()
+  sessions.push({ number, code, sessionId, timestamp: Date.now() })
+  saveSessions(sessions)
+}
+
+// Find by number
+export function getSessionByNumber(number) {
+  const sessions = loadSessions()
+  return sessions.find((s) => s.number === number)
+}
+
+// Find by code
+export function getSessionByCode(code) {
+  const sessions = loadSessions()
+  return sessions.find((s) => s.code === code)
+}
+
+// Optional: clean expired sessions (older than X minutes)
+export function cleanupOldSessions(maxAgeMinutes = 30) {
+  const sessions = loadSessions()
+  const cutoff = Date.now() - maxAgeMinutes * 60000
+  const updated = sessions.filter((s) => s.timestamp > cutoff)
+  saveSessions(updated)
     }
-
-    const data = fs.readFileSync(filePath, 'utf8');
-    const json = JSON.parse(data);
-
-    return res.status(200).json({ session: json });
-  } catch (err) {
-    console.error('Error reading session:', err);
-    return res.status(500).json({ error: 'Failed to read session file.' });
-  }
-      }
