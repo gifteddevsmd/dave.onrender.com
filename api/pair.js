@@ -1,82 +1,78 @@
-import express from 'express'
-import cors from 'cors'
-import { Boom } from '@hapi/boom'
-import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-} from '@whiskeysockets/baileys'
-import NodeCache from 'node-cache'
-import path from 'path'
-import qrcode from 'qrcode-terminal'
-import { fileURLToPath } from 'url'
-import fs from 'fs'
+import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason } from '@whiskeysockets/baileys';
+import { Boom } from '@hapi/boom';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { createCanvas } from 'canvas';
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const sessions = {}; // For code mode tracking
 
-const app = express()
-const port = process.env.PORT || 10000
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Only POST requests allowed' });
+  }
 
-app.use(cors())
-app.use(express.json())
-app.use(express.static(path.join(__dirname, '../public')))
+  const { phone, mode } = req.body;
 
-const pairingCache = new NodeCache({ stdTTL: 300 })
+  if (!phone || !/^[0-9]{10,15}$/.test(phone)) {
+    return res.status(400).json({ success: false, error: 'Invalid phone number format' });
+  }
 
-app.post('/pair', async (req, res) => {
-  const { number } = req.body
-  if (!number) return res.status(400).json({ error: 'Number is required' })
+  const sessionId = `gifteddave~${phone.slice(-4)}~${Math.random().toString(36).substring(2, 6)}`;
+  const sessionDir = join(process.cwd(), 'sessions', sessionId);
 
-  const sessionDir = `./sessions/${number}`
-  const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
+  if (!existsSync(sessionDir)) mkdirSync(sessionDir, { recursive: true });
+
+  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+  const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
-    version: await fetchLatestBaileysVersion(),
+    version,
+    printQRInTerminal: false,
     auth: state,
-    printQRInTerminal: true,
-    browser: ['DAVE-XMD', 'Chrome', '1.0.0'],
-  })
+    browser: ['Dave-Md-V1', 'Chrome', '110.0'],
+  });
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, qr, lastDisconnect } = update
-    if (qr) {
-      pairingCache.set(number, qr)
-    }
+  sock.ev.on('creds.update', saveCreds);
 
-    if (connection === 'open') {
-      const sessionID = `davexmd~${number}`
-      await sock.sendMessage(`${number}@s.whatsapp.net`, {
-        text: `✅ *Your session is ready!*\n\n📦 *Session ID:* \n\`\`\`${sessionID}\`\`\``,
-      })
-      console.log(`[CONNECTED] ${number} => ${sessionID}`)
-      sock.end()
-    } else if (connection === 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
-      if (reason !== DisconnectReason.loggedOut) {
-        startBot(number)
-      } else {
-        console.log(`[LOGGED OUT] ${number}`)
+  // QR Pairing Mode
+  if (mode === 'qr') {
+    sock.ev.once('connection.update', async (update) => {
+      const { qr, connection, lastDisconnect } = update;
+
+      if (qr) {
+        const canvas = createCanvas(300, 300);
+        const QRCode = await import('qrcode');
+        await QRCode.toCanvas(canvas, qr);
+        const qrImage = canvas.toDataURL();
+        return res.status(200).json({ success: true, session: sessionId, qr: qrImage });
       }
+
+      if (connection === 'open') {
+        console.log(`✅ QR connected: ${sessionId}`);
+      }
+
+      if (connection === 'close') {
+        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+        console.log(`❌ QR Disconnected: ${reason}`);
+      }
+    });
+
+  // Code Pairing Mode
+  } else if (mode === 'code') {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    sessions[phone] = { code, sessionId };
+
+    try {
+      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+        text: `🔐 Your *Dave-Md-V1* bot code is: *${code}*\n\nEnter this code on the website to activate your bot.`,
+      });
+
+      return res.status(200).json({ success: true, code });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: 'Failed to send code via WhatsApp' });
     }
-  })
 
-  sock.ev.on('creds.update', saveCreds)
-
-  res.json({
-    message: 'QR generated. Visit /qr?number=YOUR_NUMBER to view.',
-    qrUrl: `/qr?number=${number}`
-  })
-})
-
-// QR Viewer
-app.get('/qr', (req, res) => {
-  const number = req.query.number
-  const qr = pairingCache.get(number)
-  if (!qr) return res.send('❌ QR expired or not found.')
-  res.send(`<pre>${qr}</pre>`)
-})
-
-app.listen(port, () => {
-  console.log(`✅ QR pairing server is live on port ${port}`)
-})
+  } else {
+    return res.status(400).json({ success: false, error: 'Invalid mode. Use "qr" or "code"' });
+  }
+    }
