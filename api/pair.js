@@ -1,38 +1,47 @@
-import makeWASocket, {
-  useSingleFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys';
+import express from 'express'
+import { Boom } from '@hapi/boom'
+import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+import pino from 'pino'
 
-import { Boom } from '@hapi/boom';
-import { existsSync, mkdirSync } from 'fs';
-import P from 'pino';
+const app = express()
+const PORT = process.env.PORT || 10000
 
-const { state, saveState } = useSingleFileAuthState('./auth_info.json');
+app.get('/', async (req, res) => {
+  res.send('✅ Pairing service is running. Use POST /pair to pair.')
+})
 
-const startSock = async () => {
-  const { version } = await fetchLatestBaileysVersion();
+// Dummy pairing route for now (you can extend this with phone+code logic later)
+app.get('/pair', async (req, res) => {
+  const { state, saveCreds } = await useMultiFileAuthState('./session')
+  const { version } = await fetchLatestBaileysVersion()
 
   const sock = makeWASocket({
-    logger: P({ level: 'silent' }),
+    version,
+    logger: pino({ level: 'silent' }),
     printQRInTerminal: true,
     auth: state,
-    version
-  });
+    browser: ['Dave-Md-V1', 'Safari', '1.0.0']
+  })
 
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update;
+  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
     if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      const reasonCode = lastDisconnect?.error?.output?.statusCode
+      const shouldReconnect = reasonCode !== DisconnectReason.loggedOut
+      console.log('Connection closed. Should reconnect:', shouldReconnect)
       if (shouldReconnect) {
-        startSock();
+        // auto-restart logic
+        res.send('⚠️ Connection closed. Reconnecting...')
+      } else {
+        res.send('❌ Disconnected. Please re-pair.')
       }
     } else if (connection === 'open') {
-      console.log('✅ Pairing server live on port 10000');
+      res.send('✅ Paired successfully! Session saved.')
     }
-  });
+  })
 
-  sock.ev.on('creds.update', saveState);
-};
+  sock.ev.on('creds.update', saveCreds)
+})
 
-startSock();
+app.listen(PORT, () => {
+  console.log(`✅ Pairing server live on port ${PORT}`)
+})
