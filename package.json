@@ -1,17 +1,17 @@
 {
   "name": "dave-pair-service",
   "version": "1.0.0",
-  "description": "WhatsApp Baileys Pairing Service by Dave",
+  "description": "Pairing service for Dave-Md-V1 WhatsApp bot",
   "main": "api/pair.js",
   "type": "module",
   "scripts": {
     "start": "node api/pair.js"
   },
-  "author": "Dave",
-  "license": "MIT",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.6.0",
     "@hapi/boom": "^10.0.1",
+    "express": "^4.19.2",
+    "qrcode-terminal": "^0.12.0",
     "pino": "^8.14.1"
   }
 }
