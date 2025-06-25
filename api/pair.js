@@ -1,5 +1,4 @@
-// XMD Pairing Endpoint
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
@@ -29,14 +28,16 @@ module.exports = async (req, res) => {
     if (connection === 'open') {
       console.log('✅ Paired:', number);
     } else if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error = Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+      const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
       console.log('❌ Disconnected. Reconnecting:', shouldReconnect);
-      if (shouldReconnect) startSock();
+      if (shouldReconnect) {
+        // Reconnect logic (if desired)
+      }
     }
   });
 
   return res.json({
     sessionId: sessionId,
-    status: 'Session created and paired!',
+    status: 'Session created and pairing in progress...',
   });
 };
