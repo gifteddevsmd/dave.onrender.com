@@ -3,52 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DAVE-XMD | QR Pairing</title>
+  <title>Dave-Md-V1 Pairing</title>
   <style>
     body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
+      font-family: Arial, sans-serif;
+      background: #111827;
+      color: white;
+      text-align: center;
+      padding: 50px;
     }
-    h1 {
-      color: #0ff;
-    }
-    input, button {
-      padding: 10px;
+    input, select, button {
+      font-size: 16px;
+      padding: 12px;
       margin: 10px;
-      background: #111;
-      color: #0f0;
-      border: 1px solid #0f0;
-      font-size: 1rem;
+      width: 300px;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #22c55e;
+    }
+    img {
+      margin-top: 20px;
+      max-width: 300px;
     }
   </style>
 </head>
 <body>
-  <h1>🔐 DAVE-XMD QR Pairing</h1>
-  <input type="text" id="number" placeholder="Enter WhatsApp Number (e.g. 2547XXXXXX)" />
-  <button onclick="pair()">Generate QR</button>
-  <div id="qrbox"></div>
+  <h1>🤖 Dave-Md-V1 WhatsApp Pairing</h1>
+  <p>Enter your WhatsApp number and choose a method</p>
+
+  <input id="phone" type="text" placeholder="e.g. 254712345678" />
+  <br />
+  <select id="mode">
+    <option value="qr">QR Code</option>
+    <option value="code">Code</option>
+  </select>
+  <br />
+  <button onclick="pair()">Start Pairing</button>
+
+  <div id="result" class="result"></div>
+  <div id="qr"></div>
 
   <script>
     async function pair() {
-      const number = document.getElementById('number').value
-      if (!number) return alert('Enter number!')
+      const phone = document.getElementById("phone").value.trim();
+      const mode = document.getElementById("mode").value;
+      const result = document.getElementById("result");
+      const qrDiv = document.getElementById("qr");
+      
+      result.textContent = "⏳ Please wait...";
+      qrDiv.innerHTML = "";
 
-      const res = await fetch('/pair', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number })
-      })
+      try {
+        const res = await fetch('/api/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, mode })
+        });
 
-      const data = await res.json()
-      if (data.qrUrl) {
-        document.getElementById('qrbox').innerHTML = `<iframe src="${data.qrUrl}" style="width:100%; height:300px;"></iframe>`
-      } else {
-        document.getElementById('qrbox').innerText = '❌ Failed to generate QR.'
+        const data = await res.json();
+
+        if (data.success) {
+          if (data.qr) {
+            const img = document.createElement('img');
+            img.src = data.qr;
+            qrDiv.appendChild(img);
+            result.textContent = "📲 Scan the QR Code with WhatsApp!";
+          } else if (data.code) {
+            result.innerHTML = `📩 Code sent to WhatsApp: <b>${data.code}</b><br>Now wait for session activation.`;
+          } else if (data.session) {
+            result.innerHTML = `✅ Paired! Session ID: <code>${data.session}</code>`;
+          }
+        } else {
+          result.textContent = "❌ " + data.error;
+        }
+      } catch (e) {
+        result.textContent = "❌ Server error!";
       }
     }
   </script>
