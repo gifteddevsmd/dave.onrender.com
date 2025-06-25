@@ -1,44 +1,24 @@
-import fs from "fs"
-import path from "path"
+import fs from 'fs'
+import path from 'path'
 
-const sessionFilePath = path.join(process.cwd(), "sessions.json")
+const SESSIONS_DIR = path.join(process.cwd(), 'sessions')
 
-// Load sessions.json or initialize
-function loadSessions() {
-  if (!fs.existsSync(sessionFilePath)) {
-    fs.writeFileSync(sessionFilePath, JSON.stringify([]))
-  }
-  return JSON.parse(fs.readFileSync(sessionFilePath))
+if (!fs.existsSync(SESSIONS_DIR)) {
+  fs.mkdirSync(SESSIONS_DIR, { recursive: true })
 }
 
-// Save sessions to disk
-function saveSessions(sessions) {
-  fs.writeFileSync(sessionFilePath, JSON.stringify(sessions, null, 2))
+export function generateSessionId(phone, code) {
+  return `gifteddave~${code.replace(/\s+/g, '').toLowerCase()}`
 }
 
-// Add a new pairing
-export function addPair(number, code, sessionId) {
-  const sessions = loadSessions()
-  sessions.push({ number, code, sessionId, timestamp: Date.now() })
-  saveSessions(sessions)
+export function saveSession(id, data) {
+  const dir = path.join(SESSIONS_DIR, id)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'creds.json'), JSON.stringify(data, null, 2))
 }
 
-// Find by number
-export function getSessionByNumber(number) {
-  const sessions = loadSessions()
-  return sessions.find((s) => s.number === number)
+export function loadSession(id) {
+  const file = path.join(SESSIONS_DIR, id, 'creds.json')
+  if (!fs.existsSync(file)) return null
+  return JSON.parse(fs.readFileSync(file))
 }
-
-// Find by code
-export function getSessionByCode(code) {
-  const sessions = loadSessions()
-  return sessions.find((s) => s.code === code)
-}
-
-// Optional: clean expired sessions (older than X minutes)
-export function cleanupOldSessions(maxAgeMinutes = 30) {
-  const sessions = loadSessions()
-  const cutoff = Date.now() - maxAgeMinutes * 60000
-  const updated = sessions.filter((s) => s.timestamp > cutoff)
-  saveSessions(updated)
-    }
