@@ -4,10 +4,11 @@ import { Boom } from '@hapi/boom'
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
 } from '@whiskeysockets/baileys'
 import NodeCache from 'node-cache'
 import path from 'path'
+import qrcode from 'qrcode-terminal'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
 
@@ -23,83 +24,59 @@ app.use(express.static(path.join(__dirname, '../public')))
 
 const pairingCache = new NodeCache({ stdTTL: 300 })
 
-// ✅ Generate linkable 8-character code like ABC-12345
-function generateCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-  const digits = '0123456789'
-  return (
-    chars[Math.floor(Math.random() * chars.length)] +
-    chars[Math.floor(Math.random() * chars.length)] +
-    chars[Math.floor(Math.random() * chars.length)] +
-    '-' +
-    digits[Math.floor(Math.random() * 10)] +
-    digits[Math.floor(Math.random() * 10)] +
-    digits[Math.floor(Math.random() * 10)] +
-    digits[Math.floor(Math.random() * 10)] +
-    digits[Math.floor(Math.random() * 10)]
-  )
-}
-
-// ✅ POST /pair – receive number and return pairing code
 app.post('/pair', async (req, res) => {
   const { number } = req.body
-  if (!number) return res.status(400).json({ error: 'Number required' })
+  if (!number) return res.status(400).json({ error: 'Number is required' })
 
-  const code = generateCode()
-  pairingCache.set(code, number)
-
-  res.json({
-    code,
-    message: '✅ Code generated. Link your WhatsApp and wait for session.'
-  })
-
-  console.log(`[PAIRING] Code: ${code} for number: ${number}`)
-})
-
-// ✅ Start the Baileys socket
-async function startBot(code, number) {
-  const folder = `./sessions/${code.replace('-', '_')}`
-  const { state, saveCreds } = await useMultiFileAuthState(folder)
+  const sessionDir = `./sessions/${number}`
+  const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
 
   const sock = makeWASocket({
     version: await fetchLatestBaileysVersion(),
-    printQRInTerminal: false,
     auth: state,
-    browser: ['DAVE-XMD', 'Chrome', '1.0.0']
+    printQRInTerminal: true,
+    browser: ['DAVE-XMD', 'Chrome', '1.0.0'],
+  })
+
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, qr, lastDisconnect } = update
+    if (qr) {
+      pairingCache.set(number, qr)
+    }
+
+    if (connection === 'open') {
+      const sessionID = `davexmd~${number}`
+      await sock.sendMessage(`${number}@s.whatsapp.net`, {
+        text: `✅ *Your session is ready!*\n\n📦 *Session ID:* \n\`\`\`${sessionID}\`\`\``,
+      })
+      console.log(`[CONNECTED] ${number} => ${sessionID}`)
+      sock.end()
+    } else if (connection === 'close') {
+      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
+      if (reason !== DisconnectReason.loggedOut) {
+        startBot(number)
+      } else {
+        console.log(`[LOGGED OUT] ${number}`)
+      }
+    }
   })
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
-    const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
-
-    if (connection === 'open') {
-      const sessionID = `davexmd~${code.replace('-', '_').toLowerCase()}`
-      await sock.sendMessage(`${number}@s.whatsapp.net`, {
-        text: `✅ *Your session is ready!*\n\n📦 *Session ID:*\n\`\`\`${sessionID}\`\`\`\n\nUse this to link your account with DAVE-XMD bot.`
-      })
-      console.log(`[SUCCESS] Session for ${number}: ${sessionID}`)
-      sock.end()
-    } else if (connection === 'close') {
-      if (reason !== DisconnectReason.loggedOut) {
-        startBot(code, number)
-      } else {
-        console.log(`[DISCONNECTED] ${number}`)
-      }
-    }
+  res.json({
+    message: 'QR generated. Visit /qr?number=YOUR_NUMBER to view.',
+    qrUrl: `/qr?number=${number}`
   })
-}
+})
 
-// ✅ Simulate pairing from browser /simulate/ABC-12345
-app.get('/simulate/:code', async (req, res) => {
-  const code = req.params.code
-  const number = pairingCache.get(code)
-  if (!number) return res.status(404).send('❌ Code expired or invalid')
-
-  await startBot(code, number)
-  res.send('📦 Pairing started. Check your WhatsApp for session ID.')
+// QR Viewer
+app.get('/qr', (req, res) => {
+  const number = req.query.number
+  const qr = pairingCache.get(number)
+  if (!qr) return res.send('❌ QR expired or not found.')
+  res.send(`<pre>${qr}</pre>`)
 })
 
 app.listen(port, () => {
-  console.log(`✅ Pairing service live on port ${port}`)
+  console.log(`✅ QR pairing server is live on port ${port}`)
 })
