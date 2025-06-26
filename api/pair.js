@@ -4,7 +4,6 @@ import {
   makeWASocket,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
-  DisconnectReason,
   makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
@@ -17,7 +16,7 @@ import Pino from 'pino'
 const app = express()
 app.use(cors())
 app.use(express.json())
-app.use(express.static('public')) // ✅ Serve frontend from public folder
+app.use(express.static('public')) // Serve frontend
 
 const sessions = {}
 
@@ -48,13 +47,13 @@ app.post('/api/pair', async (req, res) => {
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update
+  sock.ev.once('connection.update', async (update) => {
+    const { connection } = update
     if (connection === 'open') {
       console.log(`✅ Connected: ${sessionId}`)
-    } else if (connection === 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
-      console.log(`❌ Disconnected [${reason}]`)
+      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+        text: `✅ *DAVE-XMD Bot Linked Successfully!*\n🆔 *Session ID:* ${sessionId}\n\nKeep this safe and paste it into your bot.`,
+      })
     }
   })
 
@@ -68,6 +67,7 @@ app.post('/api/pair', async (req, res) => {
         return res.status(200).json({ success: true, session: sessionId, qr: qrImage })
       }
     })
+
   } else if (mode === 'code') {
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     sessions[phone] = { code, sessionId }
@@ -77,8 +77,9 @@ app.post('/api/pair', async (req, res) => {
         text: `🔐 Your *DAVE-XMD* bot code is: *${code}*\n\nEnter this code on the website to activate your bot.`,
       })
 
-      return res.status(200).json({ success: true, code, session: sessionId })
+      return res.status(200).json({ success: true, code }) // Return code only
     } catch (err) {
+      console.error('❌ Error sending code:', err)
       return res.status(500).json({ success: false, error: 'Failed to send code via WhatsApp' })
     }
   } else {
@@ -86,14 +87,14 @@ app.post('/api/pair', async (req, res) => {
   }
 })
 
-// ✅ Serve index.html on /
+// Serve frontend
 app.get('/', (req, res) => {
   const html = readFileSync(resolve('public/index.html'), 'utf-8')
   res.setHeader('Content-Type', 'text/html')
   res.send(html)
 })
 
-// ✅ Start server
+// Start server
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`✅ DAVE-XMD Pairing Backend running on port ${PORT}`)
