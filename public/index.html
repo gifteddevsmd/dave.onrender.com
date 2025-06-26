@@ -23,7 +23,6 @@
     button {
       background: #22c55e;
       color: white;
-      border: none;
       cursor: pointer;
       transition: background 0.3s ease;
     }
@@ -104,12 +103,15 @@
             const img = document.createElement('img');
             img.src = data.qr;
             qrDiv.appendChild(img);
-            result.textContent = "📲 Scan this QR Code using WhatsApp.";
+            result.innerHTML = "📲 Scan this QR Code using WhatsApp.<br>Once connected, you'll receive your session ID.";
           } else if (data.code) {
-            result.innerHTML = `📩 Code sent to WhatsApp: <b>${data.code}</b><br>Enter this code on the website to activate your bot.`;
-            showSession(data.session, sessionDiv);
-          } else if (data.session) {
+            result.innerHTML = `📩 A 6-digit code has been sent to WhatsApp number <b>${phone}</b>.<br>Check your messages.`;
+            // No session shown now; session is sent via WhatsApp by the bot.
+          } else {
             result.textContent = "✅ Paired successfully!";
+          }
+
+          if (data.session) {
             showSession(data.session, sessionDiv);
           }
         } else {
