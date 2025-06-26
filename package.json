@@ -1,9 +1,8 @@
 {
   "name": "dave-xmd-pair-service",
   "version": "1.0.0",
-  "description": "WhatsApp QR and Code-based session service for DAVE-XMD",
-  "main": "api/pair.js",
   "type": "module",
+  "main": "api/pair.js",
   "scripts": {
     "start": "node api/pair.js"
   },
