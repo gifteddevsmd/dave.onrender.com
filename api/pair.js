@@ -57,13 +57,25 @@ app.post('/api/pair', async (req, res) => {
   })
 
   if (mode === 'qr') {
-    sock.ev.once('connection.update', async (update) => {
-      const { qr } = update
-      if (qr) {
-        const qrImage = await QRCode.toDataURL(qr)
-        return res.status(200).json({ success: true, session: sessionId, qr: qrImage })
-      }
-    })
+    try {
+      const qrImage = await new Promise((resolveQR, rejectQR) => {
+        sock.ev.once('connection.update', async (update) => {
+          const { qr } = update
+          if (qr) {
+            const image = await QRCode.toDataURL(qr)
+            resolveQR(image)
+          } else {
+            rejectQR('QR not generated')
+          }
+        })
+      })
+
+      return res.status(200).json({ success: true, session: sessionId, qr: qrImage })
+    } catch (err) {
+      console.error('❌ Error generating QR:', err)
+      return res.status(500).json({ success: false, error: 'QR generation failed' })
+    }
+
   } else if (mode === 'code') {
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     sessions[phone] = { code, sessionId }
