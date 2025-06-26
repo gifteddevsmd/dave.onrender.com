@@ -7,9 +7,8 @@ import {
   makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
-import { writeFileSync, existsSync, mkdirSync, readFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync } from 'fs'
 import { join, resolve } from 'path'
-import { createCanvas } from 'canvas'
 import QRCode from 'qrcode'
 import Pino from 'pino'
 
@@ -52,7 +51,7 @@ app.post('/api/pair', async (req, res) => {
     if (connection === 'open') {
       console.log(`✅ Connected: ${sessionId}`)
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-        text: `✅ *DAVE-XMD Bot Linked Successfully!*\n🆔 *Session ID:* ${sessionId}\n\nKeep this safe and paste it into your bot.`,
+        text: `✅ *DAVE-XMD Bot Linked Successfully!*\n🆔 *Session ID:* ${sessionId}\n\nCopy & paste this into your bot.`,
       })
     }
   })
@@ -61,23 +60,20 @@ app.post('/api/pair', async (req, res) => {
     sock.ev.once('connection.update', async (update) => {
       const { qr } = update
       if (qr) {
-        const canvas = createCanvas(300, 300)
-        await QRCode.toCanvas(canvas, qr)
-        const qrImage = canvas.toDataURL()
+        const qrImage = await QRCode.toDataURL(qr)
         return res.status(200).json({ success: true, session: sessionId, qr: qrImage })
       }
     })
-
   } else if (mode === 'code') {
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     sessions[phone] = { code, sessionId }
 
     try {
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-        text: `🔐 Your *DAVE-XMD* bot code is: *${code}*\n\nEnter this code on the website to activate your bot.`,
+        text: `🔐 Your *DAVE-XMD* pairing code is: *${code}*\n\nEnter this code on the website to activate your bot.`,
       })
 
-      return res.status(200).json({ success: true, code }) // Return code only
+      return res.status(200).json({ success: true, code, session: sessionId })
     } catch (err) {
       console.error('❌ Error sending code:', err)
       return res.status(500).json({ success: false, error: 'Failed to send code via WhatsApp' })
