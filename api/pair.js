@@ -1,6 +1,11 @@
 import express from 'express'
 import cors from 'cors'
-import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason } from '@whiskeysockets/baileys'
+import {
+  makeWASocket,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  DisconnectReason
+} from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
@@ -67,7 +72,7 @@ app.post('/api/pair', async (req, res) => {
         text: `🔐 Your *DAVE-XMD* bot code is: *${code}*\n\nEnter this code on the website to activate your bot.`,
       })
 
-      return res.status(200).json({ success: true, code })
+      return res.status(200).json({ success: true, code, session: sessionId })
     } catch (err) {
       return res.status(500).json({ success: false, error: 'Failed to send code via WhatsApp' })
     }
@@ -77,7 +82,7 @@ app.post('/api/pair', async (req, res) => {
   }
 })
 
-// ✅ Required for Render/Vercel port binding
+// ✅ Required for Render/Vercel
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   console.log(`✅ DAVE-XMD Pairing Backend running on port ${PORT}`)
