@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: dave-xmd-pair
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: node api/pair.js
+    runtime: node
+    nodeVersion: 18
+    autoDeploy: true
+    branch: main
