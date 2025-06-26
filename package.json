@@ -1,7 +1,7 @@
 {
   "name": "dave-xmd-pair-service",
   "version": "1.0.0",
-  "description": "Pairing backend for DAVE-XMD WhatsApp bot (QR + code mode)",
+  "description": "Pairing backend for DAVE-XMD WhatsApp bot (QR + Code mode)",
   "type": "module",
   "main": "api/pair.js",
   "scripts": {
@@ -10,10 +10,8 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.1",
-    "canvas": "^2.11.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "node-cache": "^5.1.2",
     "pino": "^8.17.0",
     "qrcode": "^1.5.1"
   },
