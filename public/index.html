@@ -108,10 +108,11 @@
             qrDiv.appendChild(img);
             result.innerHTML = "📲 Scan this QR Code using WhatsApp.<br>Once linked, your session ID will be sent via WhatsApp.";
           } else if (data.code) {
-            result.innerHTML = `📩 A 6-digit code was sent to <b>${phone}</b><br>Enter it on this page or inside your bot if required.`;
+            result.innerHTML = `📩 A 6-digit code was sent to <b>${phone}</b><br>Check WhatsApp for the code.`;
             showCode(data.code, codeDiv);
-          } else if (data.session) {
-            result.textContent = "✅ Paired successfully!";
+          }
+
+          if (data.session) {
             showSession(data.session, sessionDiv);
           }
         } else {
@@ -140,7 +141,6 @@
     }
 
     function showSession(session, container) {
-      if (!session) return;
       const codeBlock = document.createElement("code");
       codeBlock.textContent = session;
 
