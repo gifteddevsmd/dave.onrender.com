@@ -75,6 +75,7 @@
 
   <div id="result" class="result"></div>
   <div id="qr"></div>
+  <div id="code-display" style="margin-top: 15px;"></div>
   <div id="session-container" style="margin-top: 20px;"></div>
 
   <script>
@@ -83,10 +84,12 @@
       const mode = document.getElementById("mode").value;
       const result = document.getElementById("result");
       const qrDiv = document.getElementById("qr");
+      const codeDiv = document.getElementById("code-display");
       const sessionDiv = document.getElementById("session-container");
 
       result.textContent = "⏳ Please wait...";
       qrDiv.innerHTML = "";
+      codeDiv.innerHTML = "";
       sessionDiv.innerHTML = "";
 
       try {
@@ -103,15 +106,12 @@
             const img = document.createElement('img');
             img.src = data.qr;
             qrDiv.appendChild(img);
-            result.innerHTML = "📲 Scan this QR Code using WhatsApp.<br>Once connected, you'll receive your session ID.";
+            result.innerHTML = "📲 Scan this QR Code using WhatsApp.<br>Once linked, your session ID will be sent via WhatsApp.";
           } else if (data.code) {
-            result.innerHTML = `📩 A 6-digit code has been sent to WhatsApp number <b>${phone}</b>.<br>Check your messages.`;
-            // No session shown now; session is sent via WhatsApp by the bot.
-          } else {
+            result.innerHTML = `📩 A 6-digit code was sent to <b>${phone}</b><br>Enter it on this page or inside your bot if required.`;
+            showCode(data.code, codeDiv);
+          } else if (data.session) {
             result.textContent = "✅ Paired successfully!";
-          }
-
-          if (data.session) {
             showSession(data.session, sessionDiv);
           }
         } else {
@@ -122,10 +122,26 @@
       }
     }
 
+    function showCode(code, container) {
+      const codeBlock = document.createElement("code");
+      codeBlock.textContent = code;
+
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-btn";
+      copyBtn.textContent = "Copy Code";
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(code);
+        copyBtn.textContent = "✅ Copied!";
+        setTimeout(() => (copyBtn.textContent = "Copy Code"), 2000);
+      };
+
+      container.appendChild(codeBlock);
+      container.appendChild(copyBtn);
+    }
+
     function showSession(session, container) {
       if (!session) return;
       const codeBlock = document.createElement("code");
-      codeBlock.id = "session-id";
       codeBlock.textContent = session;
 
       const copyBtn = document.createElement("button");
