@@ -8,8 +8,8 @@ import {
   makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
-import { writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { writeFileSync, existsSync, mkdirSync, readFileSync } from 'fs'
+import { join, resolve } from 'path'
 import { createCanvas } from 'canvas'
 import QRCode from 'qrcode'
 import Pino from 'pino'
@@ -17,6 +17,7 @@ import Pino from 'pino'
 const app = express()
 app.use(cors())
 app.use(express.json())
+app.use(express.static('public')) // ✅ Serve frontend from public folder
 
 const sessions = {}
 
@@ -85,9 +86,11 @@ app.post('/api/pair', async (req, res) => {
   }
 })
 
-// ✅ For testing the server directly
+// ✅ Serve index.html on /
 app.get('/', (req, res) => {
-  res.send('✅ DAVE-XMD Pairing Server is Live!')
+  const html = readFileSync(resolve('public/index.html'), 'utf-8')
+  res.setHeader('Content-Type', 'text/html')
+  res.send(html)
 })
 
 // ✅ Start server
